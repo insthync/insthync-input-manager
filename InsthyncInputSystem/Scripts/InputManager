@@ -5,9 +5,33 @@ namespace Insthync.InputSystem
 {
   public class InputManager : MonoBehaviour
   {
+    public const float ZeroAxis = 0.0f;
+    public const float MostPositive = 1.0f;
+    public const float MostNegative = -1.0f;
+
+    [System.Serializable]
+    public struct KeyData
+    {
+        public string keyName;
+        public KeyCode positivePrimaryInput;
+        public KeyCode negativePrimaryInput;
+        public KeyCode positiveSecondaryInput;
+        public KeyCode negativeSecondaryInput;
+        public bool invert;
+        public bool snap;
+        public float gravity;
+        public float sensitivity;
+        public float dead;
+    }
+
+    public KeyData[] keyLists;
+
+    protected static Dictionary<string, KeyData> keys = new Dictionary<string, KeyData>();
+    protected static Dictionary<string, float> axes = new Dictionary<string, float>();
+    
     public static InputManager Singleton { get; private set; }
     
-    void Awake()
+    protected virtual void Awake()
     {
       if (Singleton != null)
       {
@@ -17,6 +41,214 @@ namespace Insthync.InputSystem
       Singleton = this;
       
       DontDestroyOnLoad(gameObject);
+
+        foreach (KeyData key in keyLists)
+        {
+            AddKey(key);
+        }
+    }
+    
+    protected void AddKey(KeyData key)
+    {
+        if (keys.ContainsKey(key))
+        {
+            Debug.LogWarning("The key " + key.keyName + " is already exists");
+            return;
+        }
+        keys.Add(key.keyName, key);
+        axes.Add(key.keyName, 0);
+    }
+	
+	// Update is called once per frame
+    protected virtual void FixedUpdate ()
+    {
+        UpdateAxes();
+    }
+
+    protected void UpdateAxes()
+    {
+        float deltaTime = Time.deltaTime;
+        foreach (KeyData key in keys.Values)
+        {
+            float value = axes[key];
+            bool snap = key.snap;
+            float gravity = key.gravity;
+            float sensitivity = key.sensitivity;
+            if (GetAnyPositiveButton(key))
+            {
+                if (value < ZeroAxis && snap)
+                    value = ZeroAxis;
+
+                value += sensitivity * deltaTime;
+                if (value > MostPositive)
+                    value = MostPositive;
+            }
+            else if (GetAnyNegativeButton(key))
+            {
+                if (value > ZeroAxis && snap)
+                    value = ZeroAxis;
+
+                value -= sensitivity * deltaTime;
+                if (value < MostNegative)
+                    value = MostNegative;
+            }
+            else
+            {
+                if (value < ZeroAxis)
+                {
+                    value += gravity * deltaTime;
+                    if (value > ZeroAxis)
+                        value = ZeroAxis;
+                }
+                else if (value > ZeroAxis)
+                {
+                    value -= gravity * deltaTime;
+                    if (value < ZeroAxis)
+                        value = ZeroAxis;
+                }
+            }
+            axes[key] = value;
+        }
+    }
+
+    protected void GetAnyPositiveButton(KeyData key)
+    {
+        return Input.GetKey(key.positivePrimaryInput) || Input.GetKey(key.positiveSecondaryInput);
+    }
+
+    protected void GetAnyNegativeButton(KeyData key)
+    {
+        return Input.GetKey(key.negativePrimaryInput) || Input.GetKey(key.negativeSecondaryInput);
+    }
+
+    public static bool GetMouseButton(int button)
+    {
+        return Input.GetMouseButton(button);
+    }
+
+    public static bool GetMouseButtonDown(int button)
+    {
+        return Input.GetMouseButtonDown(button);
+    }
+
+    public static bool GetMouseButtonUp(int button)
+    {
+        return Input.GetMouseButtonUp(button);
+    }
+
+    public static bool GetKey(string key)
+    {
+        KeyData keyData = new KeyData();
+        if (keys.TryGetValue(key, keyData))
+        {
+            return GetAnyKeys(new KeyCode[] { keyData.positivePrimaryInput, keyData.positiveSecondaryInput });
+        }
+        return false;
+    }
+
+    public static bool GetKeyDown(string key)
+    {
+        KeyData keyData = new KeyData();
+        if (keys.TryGetValue(key, keyData))
+        {
+            return GetAnyKeysDown(new KeyCode[] { keyData.positivePrimaryInput, keyData.positiveSecondaryInput });
+        }
+        return false;
+    }
+
+    public static bool GetKeyUp(string key)
+    {
+        KeyData keyData = new KeyData();
+        if (keys.TryGetValue(key, keyData))
+        {
+            return GetAnyKeysUp(new KeyCode[] { keyData.positivePrimaryInput, keyData.positiveSecondaryInput });
+        }
+        return false;
+    }
+
+    public static bool GetKey(KeyCode key)
+    {
+        return Input.GetKey(key);
+    }
+
+    public static bool GetKeyDown(KeyCode key)
+    {
+        return Input.GetKeyDown(key);
+    }
+
+    public static bool GetKeyUp(KeyCode key)
+    {
+        return Input.GetKeyUp(key);
+    }
+
+    public static bool GetKey(KeyCode key)
+    {
+        return Input.GetKey(key);
+    }
+
+    public static void ResetInputAxes()
+    {
+        foreach (KeyData key in keys.Values)
+        {
+            axes[key] = 0;
+        }
+    }
+
+    public float GetAxis(string key)
+    {
+        float axis = ZeroAxis;
+        KeyData keyData = new KeyData();
+        if (keys.TryGetValue(key, keyData))
+        {
+            axis = axes[key];
+            axis = keyData.invert ? -axis : axis;
+        }
+        return axis;
+    }
+
+    public float GetAxisRaw(string key)
+    {
+        float axis = ZeroAxis;
+        KeyData keyData = new KeyData();
+        if (keys.TryGetValue(key, keyData))
+        {
+            if (Input.GetKey(keyData.positivePrimaryInput) || Input.GetKey(keyData.positiveSecondaryInput))
+                axis = MostPositive;
+            if (Input.GetKey(keyData.negativePrimaryInput) || Input.GetKey(keyData.negativeSecondaryInput))
+                axis = MostNegative;
+            axis = keyData.invert ? -axis : axis;
+        }
+        return axis;
+    }
+
+    public static bool GetAnyKeys(KeyCode[] keys)
+    {
+        foreach (KeyCode key in keys)
+        {
+            if (Input.GetKey(key))
+                return true;
+        }
+        return false;
+    }
+
+    public static bool GetAnyKeysDown(KeyCode[] keys)
+    {
+        foreach (KeyCode key in keys)
+        {
+            if (Input.GetKeyDown(key))
+                return true;
+        }
+        return false;
+    }
+
+    public static bool GetAnyKeysUp(KeyCode[] keys)
+    {
+        foreach (KeyCode key in keys)
+        {
+            if (Input.GetKeyUp(key))
+                return true;
+        }
+        return false;
     }
   }
 }

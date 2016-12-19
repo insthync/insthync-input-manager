@@ -212,9 +212,9 @@ namespace Insthync.InputSystem
         KeyData keyData = new KeyData();
         if (keys.TryGetValue(key, keyData))
         {
-            if (Input.GetKey(keyData.positivePrimaryInput) || Input.GetKey(keyData.positiveSecondaryInput))
+            if (GetAnyPositiveButton(key))
                 axis = MostPositive;
-            if (Input.GetKey(keyData.negativePrimaryInput) || Input.GetKey(keyData.negativeSecondaryInput))
+            if (GetAnyNegativeButton(key))
                 axis = MostNegative;
             axis = keyData.invert ? -axis : axis;
         }

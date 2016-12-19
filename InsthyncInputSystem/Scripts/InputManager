@@ -1,0 +1,22 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace Insthync.InputSystem
+{
+  public class InputManager : MonoBehaviour
+  {
+    public static InputManager Singleton { get; private set; }
+    
+    void Awake()
+    {
+      if (Singleton != null)
+      {
+        Destroy(gameObject);
+        return;
+      }
+      Singleton = this;
+      
+      DontDestroyOnLoad(gameObject);
+    }
+  }
+}
